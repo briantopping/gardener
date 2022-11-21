@@ -16,6 +16,12 @@ spec:
     matchLabels:
       app: gardener
       role: scheduler
+  strategy:
+    {{- if not .Values.global.skaffoldDebug.enabled }}
+    type: RollingUpdate
+    {{- else }}
+    type: Recreate
+    {{- end }}
   template:
     metadata:
       annotations:

@@ -14,9 +14,13 @@ spec:
   replicas: {{ required ".Values.global.apiserver.replicaCount is required" .Values.global.apiserver.replicaCount }}
   minReadySeconds: {{ .Values.global.apiserver.minReadySeconds }}
   strategy:
+    {{- if not .Values.global.skaffoldDebug.enabled }}
     type: RollingUpdate
     rollingUpdate:
 {{ toYaml .Values.global.apiserver.rollingUpdate | indent 6 }}
+    {{- else }}
+    type: Recreate
+    {{- end }}
   selector:
     matchLabels:
       app: gardener

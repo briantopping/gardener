@@ -549,3 +549,7 @@ global:
   rbac:
     seedAuthorizer:
       enabled: false
+
+  # Skaffold Debugging
+  skaffoldDebug:
+    enabled: false

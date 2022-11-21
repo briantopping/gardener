@@ -521,6 +521,8 @@ deploy:
         helm: {}
       valuesFiles:
       - example/gardener-local/controlplane/values.yaml
+      setValues:
+        global.skaffoldDebug.enabled: false
 profiles:
 - name: ha-single-zone
   patches:
@@ -534,6 +536,13 @@ profiles:
     path: /deploy/helm/releases/0/setValues
     value:
       global.apiserver.featureGates.HAControlPlanes: true
+- name: debug
+  activation:
+    - command: debug
+  patches:
+    - op: replace
+      path: /deploy/helm/releases/0/setValues/global.skaffoldDebug.enabled
+      value: true
 ---
 apiVersion: skaffold/v2beta29
 kind: Config
