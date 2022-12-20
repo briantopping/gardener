@@ -42,7 +42,7 @@ mkdir -m 0755 -p \
 
 kind create cluster \
   --name "$CLUSTER_NAME" \
-  --config <(helm template $(dirname "$0")/../example/gardener-local/kind/cluster --values "$PATH_CLUSTER_VALUES" --set "environment=$ENVIRONMENT")
+  --config <(helm template $(dirname "$0")/../example/gardener-local/kind/cluster --values "$PATH_CLUSTER_VALUES" --set "environment=$ENVIRONMENT" --set "gardener.templateRoot"=$(dirname "$0")/..)
 
 # workaround https://kind.sigs.k8s.io/docs/user/known-issues/#pod-errors-due-to-too-many-open-files
 kubectl get nodes -o name |\

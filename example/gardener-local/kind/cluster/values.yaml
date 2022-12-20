@@ -8,6 +8,7 @@ gardener:
     deployed: true
     istio:
       listenAddress: 127.0.0.1
+  templateRoot: "."
 
 registry:
   deployed: true
