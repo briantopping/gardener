@@ -1,8 +1,9 @@
 global:
-  image:
-    repository: eu.gcr.io/gardener-project/gardener/gardener-resource-manager
-    tag: latest
-    pullPolicy: IfNotPresent
+  resourceManager:
+    image:
+      repository: eu.gcr.io/gardener-project/gardener/gardener-resource-manager
+      tag: latest
+      pullPolicy: IfNotPresent
 
   resources:
     requests:

@@ -51,8 +51,8 @@ spec:
           type: RuntimeDefault
       containers:
       - name: gardener-resource-manager
-        image: {{ .Values.global.image.repository }}:{{ .Values.global.image.tag }}
-        imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+        image: {{ .Values.global.resourceManager.image.repository }}:{{ .Values.global.image.tag }}
+        imagePullPolicy: {{ .Values.global.resourceManager.image.pullPolicy }}
         args:
         - --config=/etc/gardener-resource-manager/config/config.yaml
         ports:
