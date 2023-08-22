@@ -204,7 +204,7 @@ build:
         - vendor
         - VERSION
       ldflags:
-      - '{{.LD_FLAGS}}'
+        - '{{default now .SOURCE_DATE_EPOCH | date "2006-01-02T15:04:05-0700" | cmd "hack/get-build-ld-flags.sh" "k8s.io/component-base" "VERSION" "Gardener"}}'
       main: ./cmd/gardener-apiserver
   - image: eu.gcr.io/gardener-project/gardener/controller-manager
     ko:
@@ -310,7 +310,7 @@ build:
         - vendor
         - VERSION
       ldflags:
-      - '{{.LD_FLAGS}}'
+        - '{{default now .SOURCE_DATE_EPOCH | date "2006-01-02T15:04:05-0700" | cmd "hack/get-build-ld-flags.sh" "k8s.io/component-base" "VERSION" "Gardener"}}'
       main: ./cmd/gardener-controller-manager
   - image: eu.gcr.io/gardener-project/gardener/scheduler
     ko:
@@ -374,7 +374,7 @@ build:
         - vendor
         - VERSION
       ldflags:
-      - '{{.LD_FLAGS}}'
+        - '{{default now .SOURCE_DATE_EPOCH | date "2006-01-02T15:04:05-0700" | cmd "hack/get-build-ld-flags.sh" "k8s.io/component-base" "VERSION" "Gardener"}}'
       main: ./cmd/gardener-scheduler
   - image: eu.gcr.io/gardener-project/gardener/admission-controller
     ko:
@@ -452,7 +452,7 @@ build:
         - vendor
         - VERSION
       ldflags:
-      - '{{.LD_FLAGS}}'
+        - '{{default now .SOURCE_DATE_EPOCH | date "2006-01-02T15:04:05-0700" | cmd "hack/get-build-ld-flags.sh" "k8s.io/component-base" "VERSION" "Gardener"}}'
       main: ./cmd/gardener-admission-controller
 deploy:
   helm:
@@ -518,19 +518,19 @@ profiles:
   - command: debug
   patches:
   - op: add
-    path: /deploy/helm/releases/0/setValues
+    path: /deploy/helm/releases/0/setValueTemplates
     value:
       global.apiserver.replicaCount: 1
       global.apiserver.livenessProbe.enable: false
       global.apiserver.readinessProbe.enable: false
       global.admission.replicaCount: 1
-      global.admission.config.server.healthProbes.enable: false
+      global.admission.config.server.healthProbes.enable: "{{ default \"\" .SKAFFOLD_DISABLE_HEALTH_CHECKS | lower | splitList \",\" | has \"admission\" | ternary \"false\" \"true\" }}"
       global.controller.replicaCount: 1
       global.controller.config.leaderElection.leaderElect: false
-      global.controller.config.server.healthProbes.enable: false
+      global.controller.config.server.healthProbes.enable: "{{ default \"\" .SKAFFOLD_DISABLE_HEALTH_CHECKS | lower | splitList \",\" | has \"controller\" | ternary \"false\" \"true\" }}"
       global.scheduler.replicaCount: 1
       global.scheduler.config.leaderElection.leaderElect: false
-      global.scheduler.config.server.healthProbes.enable: false
+      global.scheduler.config.server.healthProbes.enable: "{{ default \"\" .SKAFFOLD_DISABLE_HEALTH_CHECKS | lower | splitList \",\" | has \"scheduler\" | ternary \"false\" \"true\" }}"
 ---
 apiVersion: skaffold/v4beta3
 kind: Config
@@ -679,7 +679,7 @@ build:
         - vendor
         - VERSION
       ldflags:
-      - '{{.LD_FLAGS}}'
+        - '{{default now .SOURCE_DATE_EPOCH | date "2006-01-02T15:04:05-0700" | cmd "hack/get-build-ld-flags.sh" "k8s.io/component-base" "VERSION" "Gardener"}}'
       main: ./cmd/gardener-extension-provider-local
 resourceSelector:
   allow:
@@ -988,7 +988,7 @@ build:
         - vendor
         - VERSION
       ldflags:
-      - '{{.LD_FLAGS}}'
+        - '{{default now .SOURCE_DATE_EPOCH | date "2006-01-02T15:04:05-0700" | cmd "hack/get-build-ld-flags.sh" "k8s.io/component-base" "VERSION" "Gardener"}}'
       main: ./cmd/gardenlet
   - image: eu.gcr.io/gardener-project/gardener/resource-manager
     ko:
@@ -1086,7 +1086,7 @@ build:
         - vendor
         - VERSION
       ldflags:
-      - '{{.LD_FLAGS}}'
+        - '{{default now .SOURCE_DATE_EPOCH | date "2006-01-02T15:04:05-0700" | cmd "hack/get-build-ld-flags.sh" "k8s.io/component-base" "VERSION" "Gardener"}}'
       main: ./cmd/gardener-resource-manager
 deploy:
   helm:
@@ -1190,8 +1190,8 @@ profiles:
   - command: debug
   patches:
   - op: add
-    path: /deploy/helm/releases/0/setValues
+    path: /deploy/helm/releases/0/setValueTemplates
     value:
       replicaCount: 1
       config.leaderElection.leaderElect: false
-      config.server.healthProbes.enable: false
+      config.server.healthProbes.enable: "{{ default \"\" .SKAFFOLD_DISABLE_HEALTH_CHECKS | lower | splitList \",\" | has \"gardenlet\" | ternary \"false\" \"true\" }}"
