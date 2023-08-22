@@ -96,7 +96,7 @@ This is similar to `make gardener-up` but additionally starts a [skaffold dev lo
 After the initial deployment, skaffold starts watching source files.
 Once it has detected changes, press any key to trigger a new build and deployment of the changed components.
 
-Tip: you can set the `SKAFFOLD_MODULE` environment variable to select specific modules of the skaffold configuration (see [`skaffold.yaml`](../../skaffold.yaml)) that skaffold should watch, build, and deploy.
+Tip: you can set the `SKAFFOLD_MODULE` environment variable to select specific modules of the skaffold configuration (see [`skaffold.yaml`](../../skaffold/skaffold.yaml)) that skaffold should watch, build, and deploy.
 This significantly reduces turnaround times during development.
 
 For example, if you want to develop changes to gardenlet:
