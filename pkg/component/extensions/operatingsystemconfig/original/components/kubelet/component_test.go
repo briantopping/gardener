@@ -184,6 +184,8 @@ logging:
   options:
     json:
       infoBufferSize: "0"
+    text:
+      infoBufferSize: "0"
   verbosity: 0
 maxOpenFiles: 1000000
 maxPods: 110
@@ -259,7 +261,7 @@ func kubeletFiles(ctx components.Context, kubeletConfig, kubeletCABundleBase64 s
 		},
 		{
 			Path:        "/var/lib/kubelet/config/kubelet",
-			Permissions: ptr.To[int32](0644),
+			Permissions: ptr.To[int32](0600),
 			Content: extensionsv1alpha1.FileContent{
 				Inline: &extensionsv1alpha1.FileContentInline{
 					Encoding: "b64",
