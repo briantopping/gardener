@@ -10,6 +10,8 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/go-logr/logr"
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	vpaautoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
@@ -17,9 +19,11 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	"github.com/gardener/gardener/pkg/apis/resources/v1alpha1"
+	"github.com/gardener/gardener/pkg/client/kubernetes"
 	"github.com/gardener/gardener/pkg/utils/flow"
-	kubernetesutils "github.com/gardener/gardener/pkg/utils/kubernetes"
-	utilclient "github.com/gardener/gardener/pkg/utils/kubernetes/client"
+	"github.com/gardener/gardener/pkg/utils/managedresources"
 	versionutils "github.com/gardener/gardener/pkg/utils/version"
 )
 
@@ -29,12 +33,72 @@ func (g *garden) runMigrations(ctx context.Context, log logr.Logger) error {
 		return err
 	}
 
-	log.Info("Deleting stale alertmanager VPAs")
-	if err := deleteStaleAlertmanagerVPAs(ctx, log, g.mgr.GetClient()); err != nil {
+	log.Info("Migrating targetRef of shoot alertmanager VPAs")
+	if err := migrateAlertManagerVPAs(ctx, log, g.mgr.GetClient()); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// TODO(oliver-goetz): Remove this function after v1.108 has been released.
+func migrateAlertManagerVPAs(ctx context.Context, log logr.Logger, seedClient client.Client) error {
+	managedResourceList := v1alpha1.ManagedResourceList{}
+
+	if err := seedClient.List(ctx, &managedResourceList, client.MatchingLabels{v1beta1constants.LabelCareConditionType: v1beta1constants.ObservabilityComponentsHealthy}); err != nil {
+		if meta.IsNoMatchError(err) {
+			return nil
+		}
+		return fmt.Errorf("failed listing ManagedResources: %w", err)
+	}
+
+	var taskFns []flow.TaskFn
+
+	for _, managedResource := range managedResourceList.Items {
+		if managedResource.Name != "alertmanager-shoot" {
+			continue
+		}
+
+		taskFns = append(taskFns, func(ctx context.Context) error {
+			objects, err := managedresources.GetObjects(ctx, seedClient, managedResource.Namespace, managedResource.Name)
+			if err != nil {
+				return fmt.Errorf("failed getting objects for ManagedResource %q: %w", client.ObjectKeyFromObject(&managedResource), err)
+			}
+
+			var needUpdate bool
+			for i, obj := range objects {
+				vpa, ok := obj.(*vpaautoscalingv1.VerticalPodAutoscaler)
+				if !ok || vpa.Name != "alertmanager-shoot" {
+					continue
+				}
+				if vpa.Spec.TargetRef != nil && vpa.Spec.TargetRef.Kind != "Alertmanager" {
+					vpa.Spec.TargetRef = &autoscalingv1.CrossVersionObjectReference{
+						APIVersion: monitoringv1.SchemeGroupVersion.String(),
+						Kind:       "Alertmanager",
+						Name:       "shoot",
+					}
+					objects[i] = vpa
+					needUpdate = true
+					break
+				}
+			}
+
+			if !needUpdate {
+				return nil
+			}
+
+			log.Info("Migrating targetRef of alertmanager VPA in managed resource", "managedResource", client.ObjectKeyFromObject(&managedResource))
+			registry := managedresources.NewRegistry(kubernetes.SeedScheme, kubernetes.SeedCodec, kubernetes.SeedSerializer)
+			resources, err := registry.AddAllAndSerialize(objects...)
+			if err != nil {
+				return fmt.Errorf("failed serializing objects for managed resource %q: %w", client.ObjectKeyFromObject(&managedResource), err)
+			}
+
+			return managedresources.CreateForSeedWithLabels(ctx, seedClient, managedResource.Namespace, managedResource.Name, false, managedResource.Labels, resources)
+		})
+	}
+
+	return flow.Parallel(taskFns...)(ctx)
 }
 
 // TODO: Remove this function when Kubernetes 1.27 support gets dropped.
@@ -114,31 +178,4 @@ func migrateDeprecatedTopologyLabels(ctx context.Context, log logr.Logger, seedC
 	}
 
 	return flow.Parallel(taskFns...)(ctx)
-}
-
-// deleteStaleAlertmanagerVPAs deletes VPAs with name "alertmanager-vpa" in the Seed cluster.
-// In https://github.com/gardener/gardener/pull/9257/files#diff-31f2d707167e32b68a064c12fe955a5f2e7d6668e4de445ea9bf6b4e125e6091R95-R103 we forgot to delete
-// the VPA related to the old alertmanager deployment (https://github.com/gardener/gardener/pull/9257/files#diff-48abc7fddac745815a412837ac95081265c7ffcd80d5cbf3b2ec1454b2a4068aL160-L175).
-//
-// TODO(ialidzhikov): Remove this function after v1.106 has been released.
-func deleteStaleAlertmanagerVPAs(ctx context.Context, log logr.Logger, seedClient client.Client) error {
-	vpas := &vpaautoscalingv1.VerticalPodAutoscalerList{}
-	if err := seedClient.List(ctx, vpas); err != nil {
-		if meta.IsNoMatchError(err) {
-			log.Info("Received a 'no match error' while trying to list VPAs. Will assume that the VPA CRD is not yet installed (for example new Seed creation) and will skip cleaning up stale alertmanager VPAs")
-			return nil
-		}
-
-		return err
-	}
-
-	return utilclient.ApplyToObjects(ctx, vpas, func(ctx context.Context, obj client.Object) error {
-		if obj.GetName() == "alertmanager-vpa" {
-			if err := kubernetesutils.DeleteObject(ctx, seedClient, obj); err != nil {
-				return fmt.Errorf("failed to delete VPA %s: %w", client.ObjectKeyFromObject(obj), err)
-			}
-		}
-
-		return nil
-	})
 }
