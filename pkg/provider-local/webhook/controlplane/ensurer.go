@@ -87,10 +87,15 @@ func (e *ensurer) EnsureAdditionalProvisionFiles(_ context.Context, _ extensions
 			UpstreamHost: "europe-docker.pkg.dev",
 			MirrorHost:   "http://garden.local.gardener.cloud:5008",
 		},
+		// Enable containerd to reach registry at garden.local.gardener.cloud:5001 via HTTP.
+		{
+			UpstreamHost: "garden.local.gardener.cloud:5001",
+			MirrorHost:   "http://garden.local.gardener.cloud:5001",
+		},
 	} {
 		*new = webhook.EnsureFileWithPath(*new, extensionsv1alpha1.File{
 			Path:        filepath.Join("/etc/containerd/certs.d", mirror.UpstreamHost, "hosts.toml"),
-			Permissions: ptr.To[int32](0644),
+			Permissions: ptr.To[uint32](0644),
 			Content: extensionsv1alpha1.FileContent{
 				Inline: &extensionsv1alpha1.FileContentInline{
 					Data: mirror.HostsTOML(),
