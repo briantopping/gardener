@@ -9,7 +9,7 @@ require (
 	github.com/andybalholm/brotli v1.2.0
 	github.com/bramvdbogaerde/go-scp v1.5.0
 	github.com/containerd/containerd v1.7.28
-	github.com/coreos/go-systemd/v22 v22.5.0
+	github.com/coreos/go-systemd/v22 v22.6.0
 	github.com/distribution/distribution/v3 v3.0.0
 	github.com/docker/cli v28.3.3+incompatible
 	github.com/fluent/fluent-operator/v3 v3.3.0
@@ -30,7 +30,7 @@ require (
 	github.com/ironcore-dev/vgopath v0.1.5
 	github.com/kubernetes-csi/external-snapshotter/client/v4 v4.2.0
 	github.com/mitchellh/hashstructure/v2 v2.0.2
-	github.com/onsi/ginkgo/v2 v2.24.0
+	github.com/onsi/ginkgo/v2 v2.25.0
 	github.com/onsi/gomega v1.38.0
 	github.com/open-telemetry/opentelemetry-operator v0.131.0
 	github.com/opencontainers/image-spec v1.1.1
@@ -82,7 +82,7 @@ require (
 	k8s.io/kubelet v0.33.4
 	k8s.io/metrics v0.33.4
 	k8s.io/pod-security-admission v0.33.4
-	k8s.io/utils v0.0.0-20250604170112-4c0f3b243397
+	k8s.io/utils v0.0.0-20250820121507-0af2bda4dd1d
 	sigs.k8s.io/controller-runtime v0.21.0
 	sigs.k8s.io/controller-tools v0.18.0
 	sigs.k8s.io/structured-merge-diff/v4 v4.7.0
