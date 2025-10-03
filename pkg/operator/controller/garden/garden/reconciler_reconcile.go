@@ -16,6 +16,7 @@ import (
 	"github.com/go-logr/logr"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	monitoringv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1340,6 +1341,21 @@ var IntervalWaitUntilExtensionReady = 5 * time.Second
 // waitUntilRequiredExtensionsReady waits until all the extensions required for a garden reconciliation are ready.
 func (r *Reconciler) waitUntilRequiredExtensionsReady(ctx context.Context, log logr.Logger, garden *operatorv1alpha1.Garden, extensionList *operatorv1alpha1.ExtensionList) error {
 	requiredExtensions := operator.ComputeRequiredExtensionsForGarden(garden, extensionList)
+
+	// Skip extension wait during initial bootstrap (before Virtual Garden ETCD exists)
+	// This breaks the chicken-and-egg problem where extensions need Virtual Garden CRDs
+	// but Garden won't create Virtual Garden without extensions being ready.
+	// After Virtual Garden exists, extensions can be deployed and this check will pass.
+	etcdMainSts := &appsv1.StatefulSet{}
+	etcdName := "virtual-garden-etcd-main"
+	if err := r.RuntimeClientSet.Client().Get(ctx, client.ObjectKey{Name: etcdName, Namespace: r.GardenNamespace}, etcdMainSts); err != nil {
+		if apierrors.IsNotFound(err) {
+			log.Info("Skipping extension wait during initial bootstrap (Virtual Garden ETCD not yet created)")
+			return nil
+		}
+		log.Error(err, "Failed to check for Virtual Garden ETCD StatefulSet")
+		// Continue with extension check on other errors
+	}
 
 	return retry.UntilTimeout(ctx, IntervalWaitUntilExtensionReady, time.Minute, func(ctx context.Context) (done bool, err error) {
 		extensionList := &operatorv1alpha1.ExtensionList{}
