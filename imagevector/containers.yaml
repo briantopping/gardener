@@ -183,12 +183,12 @@ images:
   - name: vpn-server
     sourceRepository: github.com/gardener/vpn2
     repository: europe-docker.pkg.dev/gardener-project/releases/gardener/vpn-server
-    tag: "0.43.0"
+    tag: "0.44.0"
   # OpenTelemetry
   - name: opentelemetry-operator
     sourceRepository: github.com/open-telemetry/opentelemetry-operator
     repository: europe-docker.pkg.dev/gardener-project/releases/3rd/opentelemetry-operator/opentelemetry-operator
-    tag: "v0.137.0"
+    tag: "v0.138.0"
     labels:
       - name: 'gardener.cloud/cve-categorisation'
         value:
@@ -458,7 +458,7 @@ images:
   - name: vpn-client
     sourceRepository: github.com/gardener/vpn2
     repository: europe-docker.pkg.dev/gardener-project/releases/gardener/vpn-client
-    tag: "0.43.0"
+    tag: "0.44.0"
   - name: coredns
     sourceRepository: github.com/coredns/coredns
     repository: registry.k8s.io/coredns/coredns
@@ -577,7 +577,7 @@ images:
   - name: fluent-bit
     sourceRepository: github.com/fluent/fluent-operator
     repository: europe-docker.pkg.dev/gardener-project/releases/3rd/fluent-operator/fluent-bit
-    tag: "v4.0.9"
+    tag: "v4.1.1"
     labels:
       - name: 'gardener.cloud/cve-categorisation'
         value:
@@ -596,7 +596,7 @@ images:
       name: fluent-bit-to-vali
     sourceRepository: github.com/gardener/logging
     repository: europe-docker.pkg.dev/gardener-project/releases/gardener/fluent-bit-to-vali
-    tag: "v0.67.0"
+    tag: "v0.68.0"
     labels:
       - name: 'gardener.cloud/cve-categorisation'
         value:
@@ -631,7 +631,7 @@ images:
   - name: vali-curator
     sourceRepository: github.com/gardener/logging
     repository: europe-docker.pkg.dev/gardener-project/releases/gardener/vali-curator
-    tag: "v0.67.0"
+    tag: "v0.68.0"
     labels:
       - name: 'gardener.cloud/cve-categorisation'
         value:
@@ -687,7 +687,7 @@ images:
       name: telegraf-iptables
     sourceRepository: github.com/gardener/logging
     repository: europe-docker.pkg.dev/gardener-project/releases/gardener/telegraf-iptables
-    tag: "v0.67.0"
+    tag: "v0.68.0"
     labels:
       - name: 'gardener.cloud/cve-categorisation'
         value:
@@ -707,7 +707,7 @@ images:
   - name: event-logger
     sourceRepository: github.com/gardener/logging
     repository: europe-docker.pkg.dev/gardener-project/releases/gardener/event-logger
-    tag: "v0.67.0"
+    tag: "v0.68.0"
     labels:
       - name: 'gardener.cloud/cve-categorisation'
         value:
@@ -724,7 +724,7 @@ images:
   - name: tune2fs
     sourceRepository: github.com/gardener/logging
     repository: europe-docker.pkg.dev/gardener-project/releases/gardener/tune2fs
-    tag: "v0.67.0"
+    tag: "v0.68.0"
     labels:
       - name: 'gardener.cloud/cve-categorisation'
         value:
