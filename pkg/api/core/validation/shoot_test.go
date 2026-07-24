@@ -1617,6 +1617,153 @@ var _ = Describe("Shoot Validation Tests", func() {
 					shoot.Spec.Provider.Workers[0].Minimum = 3
 					shoot.Spec.Provider.Workers[0].Maximum = 3
 
+					Expect(ValidateShoot(shoot)).To(ContainElements(
+						PointTo(MatchFields(IgnoreExtras, Fields{
+							"Type":   Equal(field.ErrorTypeInvalid),
+							"Field":  Equal("spec.provider.workers[0].minimum"),
+							"Detail": ContainSubstring("self-hosted shoots only support minimum=maximum=1 for the control plane worker pool (might change in the future)"),
+						})),
+						PointTo(MatchFields(IgnoreExtras, Fields{
+							"Type":   Equal(field.ErrorTypeInvalid),
+							"Field":  Equal("spec.provider.workers[0].maximum"),
+							"Detail": ContainSubstring("control plane worker pool must have maximum=1 when high availability is not configured"),
+						})),
+					))
+				})
+
+				It("should prevent maximum != 1 without high availability", func() {
+					shoot.Spec.Provider.Workers[0].ControlPlane = &core.WorkerControlPlane{}
+					shoot.Spec.Provider.Workers[0].Minimum = 3
+					shoot.Spec.Provider.Workers[0].Maximum = 3
+
+					Expect(ValidateShoot(shoot)).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":   Equal(field.ErrorTypeInvalid),
+						"Field":  Equal("spec.provider.workers[0].maximum"),
+						"Detail": ContainSubstring("control plane worker pool must have maximum=1 when high availability is not configured"),
+					}))))
+				})
+
+				It("should allow maximum=3 with high availability failure tolerance type node except for HA restriction", func() {
+					shoot.Spec.Provider.Workers[0].ControlPlane = &core.WorkerControlPlane{}
+					shoot.Spec.Provider.Workers[0].Minimum = 3
+					shoot.Spec.Provider.Workers[0].Maximum = 3
+					shoot.Spec.Provider.Workers[0].MaxSurge = new(intstr.FromInt32(1))
+					shoot.Spec.Provider.Workers[0].MaxUnavailable = new(intstr.FromInt32(1))
+					shoot.Spec.ControlPlane = &core.ControlPlane{
+						HighAvailability: &core.HighAvailability{
+							FailureTolerance: core.FailureTolerance{
+								Type: core.FailureToleranceTypeNode,
+							},
+						},
+					}
+
+					Expect(ValidateShoot(shoot)).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":   Equal(field.ErrorTypeInvalid),
+						"Field":  Equal("spec.provider.workers[0].minimum"),
+						"Detail": ContainSubstring("self-hosted shoots only support minimum=maximum=1 for the control plane worker pool (might change in the future)"),
+					}))))
+				})
+
+				It("should prevent maximum != 3 with high availability", func() {
+					shoot.Spec.Provider.Workers[0].ControlPlane = &core.WorkerControlPlane{}
+					shoot.Spec.Provider.Workers[0].Minimum = 5
+					shoot.Spec.Provider.Workers[0].Maximum = 5
+					shoot.Spec.Provider.Workers[0].MaxSurge = new(intstr.FromInt32(1))
+					shoot.Spec.Provider.Workers[0].MaxUnavailable = new(intstr.FromInt32(1))
+					shoot.Spec.ControlPlane = &core.ControlPlane{
+						HighAvailability: &core.HighAvailability{
+							FailureTolerance: core.FailureTolerance{
+								Type: core.FailureToleranceTypeNode,
+							},
+						},
+					}
+
+					Expect(ValidateShoot(shoot)).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":   Equal(field.ErrorTypeInvalid),
+						"Field":  Equal("spec.provider.workers[0].maximum"),
+						"Detail": ContainSubstring("control plane worker pool must have maximum=3 when high availability is configured"),
+					}))))
+				})
+
+				It("should prevent maxSurge != 1 with high availability", func() {
+					shoot.Spec.Provider.Workers[0].ControlPlane = &core.WorkerControlPlane{}
+					shoot.Spec.Provider.Workers[0].Minimum = 3
+					shoot.Spec.Provider.Workers[0].Maximum = 3
+					shoot.Spec.Provider.Workers[0].MaxSurge = new(intstr.FromInt32(2))
+					shoot.Spec.Provider.Workers[0].MaxUnavailable = new(intstr.FromInt32(1))
+					shoot.Spec.ControlPlane = &core.ControlPlane{
+						HighAvailability: &core.HighAvailability{
+							FailureTolerance: core.FailureTolerance{
+								Type: core.FailureToleranceTypeNode,
+							},
+						},
+					}
+
+					Expect(ValidateShoot(shoot)).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":   Equal(field.ErrorTypeInvalid),
+						"Field":  Equal("spec.provider.workers[0].maxSurge"),
+						"Detail": ContainSubstring("control plane worker pool must have maxSurge=1 when high availability is configured"),
+					}))))
+				})
+
+				It("should prevent maxUnavailable != 1 with high availability", func() {
+					shoot.Spec.Provider.Workers[0].ControlPlane = &core.WorkerControlPlane{}
+					shoot.Spec.Provider.Workers[0].Minimum = 3
+					shoot.Spec.Provider.Workers[0].Maximum = 3
+					shoot.Spec.Provider.Workers[0].MaxSurge = new(intstr.FromInt32(1))
+					shoot.Spec.Provider.Workers[0].MaxUnavailable = new(intstr.FromInt32(0))
+					shoot.Spec.ControlPlane = &core.ControlPlane{
+						HighAvailability: &core.HighAvailability{
+							FailureTolerance: core.FailureTolerance{
+								Type: core.FailureToleranceTypeNode,
+							},
+						},
+					}
+
+					Expect(ValidateShoot(shoot)).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":   Equal(field.ErrorTypeInvalid),
+						"Field":  Equal("spec.provider.workers[0].maxUnavailable"),
+						"Detail": ContainSubstring("control plane worker pool must have maxUnavailable=1 when high availability is configured"),
+					}))))
+				})
+
+				It("should prevent zone failure tolerance without 3 zones", func() {
+					shoot.Spec.Provider.Workers[0].ControlPlane = &core.WorkerControlPlane{}
+					shoot.Spec.Provider.Workers[0].Minimum = 3
+					shoot.Spec.Provider.Workers[0].Maximum = 3
+					shoot.Spec.Provider.Workers[0].MaxSurge = new(intstr.FromInt32(1))
+					shoot.Spec.Provider.Workers[0].MaxUnavailable = new(intstr.FromInt32(1))
+					shoot.Spec.Provider.Workers[0].Zones = []string{"a", "b"}
+					shoot.Spec.ControlPlane = &core.ControlPlane{
+						HighAvailability: &core.HighAvailability{
+							FailureTolerance: core.FailureTolerance{
+								Type: core.FailureToleranceTypeZone,
+							},
+						},
+					}
+
+					Expect(ValidateShoot(shoot)).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":   Equal(field.ErrorTypeInvalid),
+						"Field":  Equal("spec.provider.workers[0].zones"),
+						"Detail": ContainSubstring("control plane worker pool must have exactly 3 zones when failure tolerance type is zone"),
+					}))))
+				})
+
+				It("should allow zone failure tolerance with 3 zones except for HA restriction", func() {
+					shoot.Spec.Provider.Workers[0].ControlPlane = &core.WorkerControlPlane{}
+					shoot.Spec.Provider.Workers[0].Minimum = 3
+					shoot.Spec.Provider.Workers[0].Maximum = 3
+					shoot.Spec.Provider.Workers[0].MaxSurge = new(intstr.FromInt32(1))
+					shoot.Spec.Provider.Workers[0].MaxUnavailable = new(intstr.FromInt32(1))
+					shoot.Spec.Provider.Workers[0].Zones = []string{"a", "b", "c"}
+					shoot.Spec.ControlPlane = &core.ControlPlane{
+						HighAvailability: &core.HighAvailability{
+							FailureTolerance: core.FailureTolerance{
+								Type: core.FailureToleranceTypeZone,
+							},
+						},
+					}
+
 					Expect(ValidateShoot(shoot)).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":   Equal(field.ErrorTypeInvalid),
 						"Field":  Equal("spec.provider.workers[0].minimum"),

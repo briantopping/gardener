@@ -399,6 +399,8 @@ func ValidateShootSpec(meta metav1.ObjectMeta, spec *core.ShootSpec, opts shootV
 		if meta.Namespace != v1beta1constants.GardenNamespace {
 			allErrs = append(allErrs, field.Invalid(field.NewPath("metadata", "namespace"), meta.Namespace, fmt.Sprintf("self-hosted shoots must be in the %q namespace", v1beta1constants.GardenNamespace)))
 		}
+
+		allErrs = append(allErrs, validateSelfHostedShootControlPlane(spec, fldPath)...)
 	}
 
 	if spec.SchedulerName != nil {
@@ -2375,10 +2377,6 @@ func ValidateWorker(worker core.Worker, kubernetes core.Kubernetes, shootNamespa
 	}
 
 	if worker.ControlPlane != nil {
-		if worker.Minimum != worker.Maximum || worker.Minimum != 1 {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("minimum"), worker.Minimum, "self-hosted shoots only support minimum=maximum=1 for the control plane worker pool (might change in the future)"))
-		}
-
 		allErrs = append(allErrs, ValidateWorkerControlPlane(worker.ControlPlane, shootNamespace, shootProviderType, fldPath.Child("controlPlane"))...)
 	}
 
@@ -3603,6 +3601,48 @@ func ValidateShootHAConfig(shoot *core.Shoot) field.ErrorList {
 func ValidateShootHAConfigUpdate(newShoot, oldShoot *core.Shoot) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateShootHAControlPlaneSpecUpdate(newShoot, oldShoot, field.NewPath("spec.controlPlane"))...)
+	return allErrs
+}
+
+func validateSelfHostedShootControlPlane(spec *core.ShootSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	controlPlaneWorker := helper.ControlPlaneWorkerPoolForShoot(spec.Provider.Workers)
+	if controlPlaneWorker == nil {
+		return allErrs
+	}
+
+	controlPlaneWorkerIdx := slices.IndexFunc(spec.Provider.Workers, func(w core.Worker) bool { return w.ControlPlane != nil })
+	workerPath := fldPath.Child("provider", "workers").Index(controlPlaneWorkerIdx)
+
+	// TODO(scheererj): Remove restriction controlPlaneWorker.Minimum != 1 with support for high availability
+	if controlPlaneWorker.Minimum != controlPlaneWorker.Maximum || controlPlaneWorker.Minimum != 1 {
+		allErrs = append(allErrs, field.Invalid(workerPath.Child("minimum"), controlPlaneWorker.Minimum, "self-hosted shoots only support minimum=maximum=1 for the control plane worker pool (might change in the future)"))
+	}
+
+	if spec.ControlPlane == nil || spec.ControlPlane.HighAvailability == nil {
+		if controlPlaneWorker.Maximum != 1 {
+			allErrs = append(allErrs, field.Invalid(workerPath.Child("maximum"), controlPlaneWorker.Maximum, "control plane worker pool must have maximum=1 when high availability is not configured"))
+		}
+		return allErrs
+	}
+
+	if controlPlaneWorker.Maximum != 3 {
+		allErrs = append(allErrs, field.Invalid(workerPath.Child("maximum"), controlPlaneWorker.Maximum, "control plane worker pool must have maximum=3 when high availability is configured"))
+	}
+
+	if controlPlaneWorker.MaxSurge == nil || controlPlaneWorker.MaxSurge.IntValue() != 1 {
+		allErrs = append(allErrs, field.Invalid(workerPath.Child("maxSurge"), controlPlaneWorker.MaxSurge, "control plane worker pool must have maxSurge=1 when high availability is configured"))
+	}
+
+	if controlPlaneWorker.MaxUnavailable == nil || controlPlaneWorker.MaxUnavailable.IntValue() != 1 {
+		allErrs = append(allErrs, field.Invalid(workerPath.Child("maxUnavailable"), controlPlaneWorker.MaxUnavailable, "control plane worker pool must have maxUnavailable=1 when high availability is configured"))
+	}
+
+	if spec.ControlPlane.HighAvailability.FailureTolerance.Type == core.FailureToleranceTypeZone && len(controlPlaneWorker.Zones) != 3 {
+		allErrs = append(allErrs, field.Invalid(workerPath.Child("zones"), controlPlaneWorker.Zones, "control plane worker pool must have exactly 3 zones when failure tolerance type is zone"))
+	}
+
 	return allErrs
 }
 
